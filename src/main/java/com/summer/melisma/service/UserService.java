@@ -9,12 +9,15 @@ import com.summer.melisma.model.dto.UserDto;
 import com.summer.melisma.model.entity.UserEntity;
 import com.summer.melisma.repository.UserRepository;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserService implements UserDetailsService {
     private final UserRepository userRepository;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public void create(LoginReqUserDto reqUserDto) {
         // 1. 넘어온 LoginReqUserDto로 UserDto 생성. (이때 password + salt값으로 password데이터 생성) 
@@ -49,21 +54,26 @@ public class UserService implements UserDetailsService {
         userRepository.save(entity);
     }
 
-    public UUID login(LoginReqUserDto reqUserDto) {
+    public UserEntity login(LoginReqUserDto reqUserDto) {
         // 1. reqUserDto로 넘어온 username과 대응되는 데이터가 있는지 확인
         // 2. 비밀번호 확인
-        Optional<UserEntity> entityOpt = userRepository.findByUsername(reqUserDto.getUsername());
+        UserEntity storedEntity = userRepository.findByUsername(reqUserDto.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException(reqUserDto.getUsername()));
 
-        if(entityOpt.isPresent()) {
-            UserEntity storedEntity = entityOpt.get();
             UUID salt = storedEntity.getSalt();
-            String loginPassword = reqUserDto.getPassword() + salt;
+//            String loginPassword = reqUserDto.getPassword() + salt;
+            String loginPassword = reqUserDto.getPassword();
 
-            if(storedEntity.getPassword().equals(loginPassword)) {
-                return storedEntity.getId();
+//            if(storedEntity.getPassword().equals(loginPassword)) {
+//                return storedEntity.getId();
+//            }
+
+            if(!passwordEncoder.matches(loginPassword,storedEntity.getPassword())) {
+                throw new BadCredentialsException("Password not matched");
             }
-        }
-        throw new NullPointerException();
+
+        return storedEntity;
+//        throw new NullPointerException();
     }
 
     @Override
@@ -79,6 +89,13 @@ public class UserService implements UserDetailsService {
         // }else {
         //     throw new UsernameNotFoundException(username);
         // }
+    }
+
+    public UserEntity authenticateByEmailAndPassword(String username, String password) {
+        UserEntity member = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException(username));
+
+        return member;
     }
 
     public UUID getUserId() {

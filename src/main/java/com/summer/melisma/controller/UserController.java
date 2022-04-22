@@ -40,15 +40,16 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginReqUserDto reqDto) {
         String message = "";
-
+        JwtResponse jwtResponse = new JwtResponse(message);
         try{
             message = userService.login(reqDto).toString();
             final String token = jwtTokenUtil.generateToken(message);
+            jwtResponse.setToken(token);
         } catch (Exception e) {
             message = "fail";
         }
 
-        return ResponseEntity.ok(new JwtResponse(message));
+        return ResponseEntity.ok(jwtResponse);
     }
 
     @Data
