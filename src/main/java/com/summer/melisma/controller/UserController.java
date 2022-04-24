@@ -42,7 +42,7 @@ public class UserController {
         String message = "";
         JwtResponse jwtResponse = new JwtResponse(message);
         try{
-            message = userService.login(reqDto).toString();
+            message = userService.login(reqDto).getUsername();
             final String token = jwtTokenUtil.generateToken(message);
             jwtResponse.setToken(token);
         } catch (Exception e) {
